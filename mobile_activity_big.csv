@@ -7,20 +7,24 @@ np.random.seed(42)
 # Number of rows
 n_rows = 50000
 
-# Create synthetic dataset
+# Create synthetic dataset with more numeric features
 df = pd.DataFrame({
     "user_id": np.arange(1, n_rows + 1),
-    "call_duration_min": np.random.randint(0, 300, n_rows),       # minutes
-    "messages_sent": np.random.randint(0, 100, n_rows),           # SMS count
-    "internet_usage_mb": np.random.randint(0, 5000, n_rows),      # MB
-    "app_sessions": np.random.randint(0, 50, n_rows),             # app usage count
+    "call_duration_min": np.random.randint(0, 300, n_rows),          # minutes of calls
+    "messages_sent": np.random.randint(0, 100, n_rows),              # SMS count
+    "internet_usage_mb": np.random.randint(0, 5000, n_rows),         # MB
+    "app_sessions": np.random.randint(0, 50, n_rows),                # app usage count
+    "active_days": np.random.randint(0, 31, n_rows),                 # days active in month
+    "avg_recharge_amount": np.random.randint(50, 2000, n_rows),      # recharge amount in currency
+    "customer_complaints": np.random.randint(0, 10, n_rows),         # number of complaints
+    "churn_probability": np.round(np.random.rand(n_rows), 2),        # probability (0-1)
+    "satisfaction_score": np.random.randint(1, 6, n_rows),           # 1–5 rating
     "device_type": np.random.choice(["Android", "iOS"], n_rows),
     "subscription_plan": np.random.choice(["Basic", "Standard", "Premium"], n_rows),
-    "active_days": np.random.randint(0, 31, n_rows),              # days active in month
 })
 
 # Save smaller version for GitHub (<25 MB)
 df_small = df.sample(n=20000, random_state=42)  # 20k rows to fit GitHub
 df_small.to_csv("mobile_activity_big.csv", index=False)
 
-print("✅ Synthetic dataset generated and saved as mobile_activity_big.csv")
+print("✅ Synthetic dataset generated with extra numeric columns and saved as mobile_activity_big.csv")
