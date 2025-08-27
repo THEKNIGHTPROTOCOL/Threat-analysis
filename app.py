@@ -7,61 +7,62 @@ import streamlit as st
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
-# ====== STREAMLIT CONFIG ======
+# ====== STREAMLIT CONFIGURATION ======
 st.set_page_config(page_title="📊 Mobile Phone Activity Analysis", layout="wide")
 sns.set_style("whitegrid")
-st.title("📱 Mobile Phone Activity - Analysis & Clustering")
+st.title("📱 Mobile Phone Activity - Data Analysis & Clustering")
 
 # ====== LOAD DATASET ======
 csv_url = "https://raw.githubusercontent.com/THEKNIGHTPROTOCOL/Threat-analysis/main/mobile_activity_big.csv"
 
 try:
-    df = pd.read_csv(csv_url, error_bad_lines=False, warn_bad_lines=True)
+    df = pd.read_csv(csv_url, on_bad_lines='skip')
     st.success(f"✅ Dataset Loaded Successfully! ({df.shape[0]} rows × {df.shape[1]} columns)")
 except Exception as e:
     st.error(f"❌ Failed to load dataset: {e}")
     st.stop()
 
-# ====== SHOW DATA ======
-st.subheader("First 5 Rows")
+# ====== SHOW DATAFRAME ======
+st.write("### First 5 Rows of the Dataset")
 st.dataframe(df.head())
 
-st.subheader("Dataset Info")
-st.write(f"Shape: {df.shape}")
-st.write("Data Types:")
+# ====== BASIC INFO ======
+st.write("### 📐 Dataset Info")
+st.write(f"**Shape:** {df.shape[0]} rows × {df.shape[1]} columns")
+st.write("**Data Types:**")
 st.write(df.dtypes)
-st.write("Missing Values:")
+st.write("**Missing Values:**")
 st.write(df.isnull().sum())
 
 # ====== BASIC STATISTICS ======
-st.subheader("Basic Statistics")
+st.write("### 📊 Basic Statistics")
 st.dataframe(df.describe())
 
 # ====== VISUALIZATIONS ======
-st.header("📈 Visualizations")
+st.header("📈 Data Visualizations")
 
 numerical_cols = df.select_dtypes(include=[np.number]).columns
 categorical_cols = df.select_dtypes(include=['object']).columns
 
 # Histogram for numerical columns
 if len(numerical_cols) > 0:
-    st.subheader("Distribution of Numerical Variables")
+    st.subheader("🔹 Distribution of Numerical Variables")
     for col in numerical_cols[:4]:
         fig, ax = plt.subplots()
-        sns.histplot(df[col], kde=True, ax=ax, color="skyblue")
+        sns.histplot(df[col], kde=True, ax=ax)
         ax.set_title(f"Distribution of {col}")
         st.pyplot(fig)
 
 # Correlation Heatmap
 if len(numerical_cols) > 1:
-    st.subheader("Correlation Heatmap")
+    st.subheader("🔹 Correlation Heatmap")
     fig, ax = plt.subplots(figsize=(10, 8))
     sns.heatmap(df[numerical_cols].corr(), annot=True, cmap="coolwarm", center=0, ax=ax)
     st.pyplot(fig)
 
 # Boxplot
 if len(numerical_cols) > 0:
-    st.subheader("Boxplots of Numerical Variables")
+    st.subheader("🔹 Boxplots of Numerical Variables")
     fig, ax = plt.subplots(figsize=(15, 6))
     df[numerical_cols].boxplot(ax=ax)
     ax.set_title("Boxplot of Numerical Variables")
@@ -69,7 +70,7 @@ if len(numerical_cols) > 0:
 
 # Categorical Variables
 if len(categorical_cols) > 0:
-    st.subheader("Distribution of Categorical Variables")
+    st.subheader("🔹 Distribution of Categorical Variables")
     for col in categorical_cols:
         fig, ax = plt.subplots()
         value_counts = df[col].value_counts().head(10)
@@ -98,7 +99,7 @@ if len(numerical_cols) >= 2:
     ax.set_title("Elbow Method for Optimal Clusters")
     st.pyplot(fig)
 
-    # User selects cluster count
+    # Let user select cluster count
     k = st.slider("Select number of clusters (k)", min_value=2, max_value=10, value=3)
     kmeans = KMeans(n_clusters=k, init="k-means++", random_state=42, n_init=10)
     clusters = kmeans.fit_predict(X_scaled)
@@ -106,7 +107,7 @@ if len(numerical_cols) >= 2:
     df_clustered = X.copy()
     df_clustered["Cluster"] = clusters
 
-    # Cluster visualization (first two numerical features)
+    # Cluster visualization (first 2 numerical columns)
     fig, ax = plt.subplots()
     scatter = ax.scatter(X.iloc[:, 0], X.iloc[:, 1], c=clusters, cmap="viridis", alpha=0.6)
     ax.set_xlabel(numerical_cols[0])
@@ -115,6 +116,5 @@ if len(numerical_cols) >= 2:
     fig.colorbar(scatter, ax=ax, label="Cluster")
     st.pyplot(fig)
 
-    st.subheader("Cluster Sizes")
+    st.write("### Cluster Sizes")
     st.write(pd.Series(clusters).value_counts().sort_index())
-
