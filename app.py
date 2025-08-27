@@ -3,26 +3,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh  # pip install streamlit-autorefresh
-
-# Auto-refresh every 10 seconds (10000 ms)
-st_autorefresh(interval=10000, key="datarefresh")
 
 # App title
 st.set_page_config(page_title="📊 Threat Analysis Dashboard", layout="wide")
 st.title("📱 Threat Analysis on Mobile Activity Dataset")
 
-# Dataset URL
+# Dataset URL (update if needed)
 DATA_URL = "https://raw.githubusercontent.com/THEKNIGHTPROTOCOL/Threat-analysis/refs/heads/main/mobile_activity_big.csv"
 
 # Load dataset safely
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv(DATA_URL, on_bad_lines="skip")
-        df = df[~df.iloc[:, 0].astype(str).str.contains(
-            "import|set|DataFrame|print|#", case=False, na=False
-        )]
+        df = pd.read_csv(DATA_URL, on_bad_lines="skip")  # skip bad rows
+        # Remove rows where first column contains code-like garbage
+        df = df[~df.iloc[:, 0].astype(str).str.contains("import|set|DataFrame|print|#", case=False, na=False)]
         return df
     except Exception as e:
         st.error(f"❌ Failed to load dataset: {e}")
@@ -31,7 +26,7 @@ def load_data():
 df = load_data()
 
 if df.empty:
-    st.warning("⚠️ No valid data found.")
+    st.warning("⚠ No valid data found.")
     st.stop()
 
 # Show dataset preview
@@ -39,21 +34,19 @@ st.subheader("🔍 Dataset Preview")
 st.dataframe(df.head(20))
 
 # Basic dataset info
-with st.expander("ℹ️ Dataset Info"):
+with st.expander("ℹ Dataset Info"):
     st.write(df.describe(include="all"))
     st.write(f"Dataset Shape: {df.shape}")
 
 # ================== VISUALIZATIONS ==================
 st.subheader("📊 Data Visualizations")
 
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["Categorical Distributions", "Numeric Trends", "Correlation Heatmap", "Insights"]
-)
+tab1, tab2, tab3, tab4 = st.tabs(["Categorical Distributions", "Numeric Trends", "Correlation Heatmap", "Insights"])
 
 with tab1:
     st.markdown("### 🔹 Distribution of Categorical Variables")
-    for col in df.select_dtypes(include="object").columns[:3]:
-        st.write(f"**Top categories in {col}:**")
+    for col in df.select_dtypes(include="object").columns[:3]:  # limit to first 3 categorical cols
+        st.write(f"*Top categories in {col}:*")
         fig, ax = plt.subplots(figsize=(6,3))
         df[col].value_counts().head(10).plot(kind="barh", ax=ax, color="skyblue")
         ax.set_title(f"Top 10 {col} categories")
