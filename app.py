@@ -1,14 +1,19 @@
 # =========================================================================
 # === Mobile Phone Activity Analysis & Clustering Dashboard ===
-# This script is a professional, unified Streamlit dashboard for
-# mobile phone activity data analysis. It combines flexible data handling,
-# interactive visualizations, and machine learning clustering.
+# This script combines two Streamlit applications to create a unified
+# dashboard for mobile phone activity data analysis.
 #
-# Key Improvements:
-# - Bug Fix: Updated KMeans initialization parameter 'n_init' to 'auto'.
-# - Enhanced Visuals: Switched from Matplotlib/Seaborn to Plotly for interactive plots.
-# - Better UX: Added a Cluster Profile Analysis section for data interpretation.
-# - Robustness: Added explicit plot closing to prevent memory leaks.
+# Key Features:
+# 1. Flexible data loading: Upload your own CSV or use a default dataset.
+# 2. Robust data cleaning: Handles missing values and removes bad lines.
+# 3. Interactive visualizations: Uses tabs for an organized layout.
+#    - Distributions of numerical and categorical features.
+#    - Correlation heatmap and pairplot for feature relationships.
+# 4. K-Means Clustering:
+#    - Elbow Method to help determine the optimal number of clusters.
+#    - Interactive slider to select the number of clusters.
+#    - 2D PCA visualization to show the clusters.
+# 5. Data Export: Download the cleaned and clustered dataset as a CSV.
 # =========================================================================
 
 # ====== IMPORT LIBRARIES ======
@@ -20,39 +25,23 @@ import streamlit as st
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-import plotly.express as px
-import plotly.graph_objects as go
 
-# ====== STREAMLIT CONFIGURATION & APP HEADER ======
-# Set the page title and layout for a wide, professional-looking dashboard.
+# ====== STREAMLIT CONFIGURATION ======
+# Set the page title and layout for a better user experience.
 st.set_page_config(page_title="📊 Mobile Phone Activity Dashboard", layout="wide")
 sns.set_style("whitegrid")
+st.title("📱 Mobile Phone Activity Analysis & Clustering")
+st.markdown("#### Upload your own dataset or use the default one.")
 
-# Create a clean header section
-st.title("📱 Professional Mobile Phone Activity Analysis")
-st.markdown("#### A comprehensive dashboard for data exploration, visualization, and user segmentation.")
-st.markdown("---")
+# ====== DATA LOADING & CLEANING ======
+# Use Streamlit's file uploader to allow users to provide their data.
+uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
-# =========================================================================
-# === DATA LOADING & CLEANING (In a sidebar for better UX) ===
-# =========================================================================
-with st.sidebar:
-    st.header("⚙️ Settings")
-    
-    # Use Streamlit's file uploader for user-provided CSV.
-    uploaded_file = st.file_uploader("Upload your own dataset (CSV)", type=["csv"])
-
-    st.markdown("---")
-    st.markdown("### Default Dataset")
-    st.markdown("Or use the default dataset to explore the features.")
-
-# Define a robust function to load and clean the data.
+# Define a function to load the data, either from upload or default URL.
+# The st.cache_data decorator caches the data so it doesn't reload on every interaction.
 @st.cache_data
 def load_data(uploaded_file=None):
-    """
-    Loads the dataset from either a user upload or a default URL.
-    Performs initial data cleaning steps.
-    """
+    """Loads the dataset from either a user upload or a default URL."""
     try:
         if uploaded_file is not None:
             df = pd.read_csv(uploaded_file, on_bad_lines='skip')
@@ -65,201 +54,153 @@ def load_data(uploaded_file=None):
         return df
 
     except Exception as e:
-        st.error(f"❌ Failed to load dataset. Please check the file format. Error: {e}")
+        st.error(f"❌ Failed to load dataset: {e}")
         return pd.DataFrame()
 
 df = load_data(uploaded_file)
 
-# Check if the dataset is valid before proceeding.
+# Stop the application if the dataset is empty.
 if df.empty:
-    st.warning("⚠ No valid data found. Please upload a valid CSV file.")
+    st.warning("⚠ No valid data found. Please check your CSV file.")
     st.stop()
 
 st.success(f"✅ Dataset Loaded ({df.shape[0]} rows × {df.shape[1]} columns)")
 
-# Data preprocessing and handling missing values.
+# Data cleaning and preprocessing steps.
 with st.spinner("Cleaning data..."):
-    # Identify and fill missing values in numeric columns with the median.
+    # Fill numeric missing values with the median of their respective columns.
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     if len(numeric_cols) > 0:
         df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
 
-    # Identify and fill missing values in categorical columns with the mode.
+    # Fill categorical missing values with the mode (most frequent value).
     categorical_cols = df.select_dtypes(include=['object']).columns
     for col in categorical_cols:
         df[col] = df[col].fillna(df[col].mode()[0])
 st.success("✅ Data cleaning complete!")
 
 # =========================================================================
-# === TABS FOR ORGANIZED ANALYSIS ===
-# Streamlit tabs for a clean, professional layout.
-tab1, tab2, tab3 = st.tabs(["🔍 Data Overview", "📈 Visualizations", "🤖 K-Means Clustering"])
+# === TABS FOR ORGANIZED VISUALIZATION AND ANALYSIS ===
+# Use st.tabs to organize the dashboard into logical sections.
+tab1, tab2, tab3 = st.tabs(["🔍 Dataset Overview & Visuals", "📈 Correlation Analysis", "🤖 K-Means Clustering"])
 
 with tab1:
-    # ====== DATA OVERVIEW ======
-    st.header("🔍 Dataset Overview")
+    # ====== DATA OVERVIEW & VISUALIZATIONS ======
+    st.header("🔍 Dataset Overview & Visualizations")
 
-    # Expander to show basic dataset information.
+    # Expandable section for basic dataset info.
     with st.expander("📋 Dataset Information"):
-        st.markdown(f"**Dataset Shape:** `{df.shape[0]}` rows, `{df.shape[1]}` columns")
-        st.markdown("**Data Types:**")
+        st.write("Shape:", df.shape)
+        st.write("Data Types:")
         st.dataframe(df.dtypes)
-        st.markdown("**Missing Values per Column:**")
-        st.dataframe(df.isnull().sum())
-        st.markdown("**First 5 Rows:**")
+        st.write("First 5 rows:")
         st.dataframe(df.head())
-        
-    st.markdown("---")
-    st.header("Summary Statistics")
-    st.markdown("Explore key statistics like mean, standard deviation, and quartiles for numerical features.")
-    st.dataframe(df[numeric_cols].describe().T)
 
+    # Numerical distributions
+    st.subheader("🔹 Numerical Features Distribution")
+    if len(numeric_cols) > 0:
+        selected_num_cols = st.multiselect("Select numerical columns to visualize", numeric_cols, default=numeric_cols[:min(4, len(numeric_cols))])
+        for col in selected_num_cols:
+            fig, ax = plt.subplots(figsize=(6, 4))
+            sns.histplot(df[col], kde=True, color="#69b3a2", ax=ax)
+            ax.set_title(f"Distribution of {col}")
+            st.pyplot(fig)
+    else:
+        st.info("No numerical columns available.")
+
+    # Categorical features
+    st.subheader("🔹 Categorical Features Distribution")
+    if len(categorical_cols) > 0:
+        selected_cat_col = st.selectbox("Select a categorical column to visualize", categorical_cols)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        # Get top 15 values to prevent visual clutter
+        value_counts = df[selected_cat_col].value_counts().head(15)
+        sns.barplot(x=value_counts.values, y=value_counts.index, palette="viridis", ax=ax)
+        ax.set_title(f"Distribution of {selected_cat_col} (Top 15)")
+        st.pyplot(fig)
+    else:
+        st.info("No categorical columns available.")
 
 with tab2:
-    # ====== INTERACTIVE VISUALIZATIONS ======
-    st.header("📈 Interactive Visualizations")
+    # ====== CORRELATION ANALYSIS ======
+    st.header("📈 Correlation Analysis")
 
-    # Sub-tab for numerical and categorical features.
-    num_tab, cat_tab, corr_tab = st.tabs(["Numerical Features", "Categorical Features", "Correlations"])
+    # Correlation heatmap
+    st.subheader("🔥 Correlation Heatmap")
+    if len(numeric_cols) > 1:
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(df[numeric_cols].corr(), annot=True, cmap="coolwarm", center=0, ax=ax)
+        st.pyplot(fig)
+    else:
+        st.info("Not enough numerical columns for correlation analysis.")
 
-    with num_tab:
-        st.subheader("🔹 Distribution of Numerical Features")
-        if len(numeric_cols) > 0:
-            selected_num_cols = st.multiselect("Select numerical columns to visualize", numeric_cols, default=numeric_cols[:min(4, len(numeric_cols))])
-            for col in selected_num_cols:
-                fig = px.histogram(df, x=col, marginal="box", nbins=30, color_discrete_sequence=['#1f77b4'])
-                fig.update_layout(title_text=f"Distribution of {col}", title_x=0.5)
-                st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No numerical columns available for visualization.")
-
-    with cat_tab:
-        st.subheader("🔹 Distribution of Categorical Features")
-        if len(categorical_cols) > 0:
-            selected_cat_col = st.selectbox("Select a categorical column to visualize", categorical_cols)
-            value_counts = df[selected_cat_col].value_counts().head(15).reset_index()
-            value_counts.columns = [selected_cat_col, 'count']
-            fig = px.bar(value_counts, x='count', y=selected_cat_col, orientation='h', color_discrete_sequence=['#2ca02c'])
-            fig.update_layout(title_text=f"Top 15 Categories in {selected_cat_col}", title_x=0.5)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No categorical columns available for visualization.")
-
-    with corr_tab:
-        st.subheader("🔥 Interactive Correlation Heatmap")
+    # Pairplot (scatter matrix)
+    if st.checkbox("Show Pairplot (may be slow for large datasets)"):
         if len(numeric_cols) > 1:
-            corr_matrix = df[numeric_cols].corr().round(2)
-            fig = px.imshow(corr_matrix, text_auto=True, color_continuous_scale='RdBu_r', 
-                            aspect="auto")
-            fig.update_layout(title_text="Feature Correlation Heatmap", title_x=0.5)
-            st.plotly_chart(fig, use_container_width=True)
+            # Sample a smaller dataset for performance
+            sample_df = df[numeric_cols].sample(min(500, len(df)))
+            fig = sns.pairplot(sample_df)
+            st.pyplot(fig)
         else:
-            st.info("Not enough numerical columns to display a correlation heatmap.")
-        
-        st.markdown("---")
-        if st.checkbox("Show Interactive Pairplot (Warning: May be slow for large datasets)"):
-            if len(numeric_cols) > 1 and len(numeric_cols) <= 10:
-                sample_df = df[numeric_cols].sample(min(500, len(df)))
-                fig = px.scatter_matrix(sample_df)
-                fig.update_layout(title_text="Interactive Pairplot", title_x=0.5)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("Pairplot is not recommended for this dataset (too many columns or rows).")
+            st.info("Not enough numerical columns to create a pairplot.")
 
 with tab3:
     # ====== K-MEANS CLUSTERING ======
-    st.header("🤖 K-Means Clustering for User Segmentation")
+    st.header("🤖 K-Means Clustering")
     if len(numeric_cols) >= 2:
-        st.markdown("### 1. Find the Optimal Number of Clusters")
-        st.markdown("Use the **Elbow Method** below to visually identify a good number of clusters (K). Look for the point where the curve starts to bend.")
-
         # Prepare data for clustering
         X = df[numeric_cols].dropna()
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
         # Elbow method to find the optimal number of clusters
+        st.subheader("Elbow Method to find Optimal K")
         wcss = []
+        # Run KMeans for 1 to 10 clusters
         for i in range(1, 11):
-            kmeans = KMeans(n_clusters=i, init="k-means++", random_state=42, n_init='auto')
+            kmeans = KMeans(n_clusters=i, init="k-means++", random_state=42, n_init=10)
             kmeans.fit(X_scaled)
             wcss.append(kmeans.inertia_)
         
-        # Plot the elbow method graph with Matplotlib
+        # Plot the elbow method graph
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(range(1, 11), wcss, marker="o", linestyle="--", color="#e84a5f")
-        ax.set_xlabel("Number of Clusters (K)", fontsize=12)
-        ax.set_ylabel("WCSS (Within-Cluster Sum of Squares)", fontsize=12)
-        ax.set_title("Elbow Method for K-Means", fontsize=16)
+        ax.plot(range(1, 11), wcss, marker="o", linestyle="--", color="#FF6B6B")
+        ax.set_xlabel("Number of Clusters")
+        ax.set_ylabel("WCSS (Within-Cluster Sum of Squares)")
+        ax.set_title("Elbow Method")
         st.pyplot(fig)
-        plt.close(fig)
 
-        st.markdown("### 2. Run K-Means Clustering")
-        # User selects the number of clusters in the sidebar
-        with st.sidebar:
-            st.markdown("---")
-            k = st.slider("Select the number of clusters (K)", min_value=2, max_value=10, value=3)
-
-        kmeans = KMeans(n_clusters=k, init="k-means++", random_state=42, n_init='auto')
+        # User selects the number of clusters
+        k = st.slider("Select number of clusters (K)", min_value=2, max_value=10, value=3)
+        kmeans = KMeans(n_clusters=k, init="k-means++", random_state=42, n_init=10)
         clusters = kmeans.fit_predict(X_scaled)
         
         # Add the cluster labels to the original dataframe
         df["Cluster"] = pd.Series(clusters, index=X.index)
 
-        st.markdown("---")
+        # Display the size of each cluster
         st.write("### Cluster Sizes")
         st.dataframe(df["Cluster"].value_counts().sort_index())
 
-        st.markdown("### 3. Visualize the Clusters")
-        st.markdown("An interactive 2D PCA plot helps visualize the clusters in a reduced dimension.")
-        
         # PCA for 2D visualization of clusters
+        st.subheader("Cluster Visualization (PCA 2D)")
         pca = PCA(n_components=2)
         X_pca = pca.fit_transform(X_scaled)
-        pca_df = pd.DataFrame(X_pca, columns=['PCA Component 1', 'PCA Component 2'], index=X.index)
-        pca_df['Cluster'] = df['Cluster'].astype(str) # Convert to string for correct coloring
-
+        
         # Create a scatter plot of the clusters in the 2D PCA space
-        fig = px.scatter(pca_df, x='PCA Component 1', y='PCA Component 2', color='Cluster', 
-                         hover_data=numeric_cols, # Show original data on hover
-                         color_discrete_sequence=px.colors.qualitative.Plotly)
-        fig.update_layout(title_text=f"K-Means Clusters (K={k}, 2D PCA)", title_x=0.5)
-        st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown("### 4. Cluster Profile Analysis")
-        st.markdown("This chart visualizes the **average values** for each feature across the different clusters. This is key to understanding the characteristics of each user segment.")
-        
-        cluster_profiles = df.groupby('Cluster')[numeric_cols].mean().transpose().reset_index()
-        cluster_profiles = cluster_profiles.rename(columns={'index': 'Feature'})
-        
-        # Create an interactive bar chart to compare cluster profiles
-        fig = go.Figure()
-        for cluster in cluster_profiles.columns[1:]:
-            fig.add_trace(go.Bar(x=cluster_profiles['Feature'], y=cluster_profiles[cluster], name=f'Cluster {cluster}'))
-        
-        fig.update_layout(
-            barmode='group',
-            xaxis_title='Feature',
-            yaxis_title='Average Value',
-            title='Interactive Cluster Profile Comparison',
-            title_x=0.5,
-            legend_title_text='Cluster'
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        st.markdown("---")
-        st.markdown("Or, view the raw data table below:")
-        st.dataframe(df.groupby('Cluster')[numeric_cols].mean().transpose())
-
-
+        fig, ax = plt.subplots(figsize=(10, 8))
+        scatter = ax.scatter(X_pca[:, 0], X_pca[:, 1], c=clusters, cmap="viridis", alpha=0.7)
+        ax.set_xlabel("PCA Component 1")
+        ax.set_ylabel("PCA Component 2")
+        ax.set_title(f"K-Means Clusters (K={k}, 2D PCA)")
+        fig.colorbar(scatter, ax=ax, label="Cluster")
+        st.pyplot(fig)
     else:
         st.info("Please ensure your dataset has at least two numerical columns to perform clustering.")
 
 # ====== DOWNLOAD CLEANED & CLUSTERED DATA ======
-st.markdown("---")
-st.header("💾 Download Processed Data")
+st.header("💾 Download Cleaned & Clustered Data")
 if "Cluster" in df.columns:
-    st.markdown("Your cleaned and clustered dataset is ready for download. This file includes a new 'Cluster' column.")
     # Convert the DataFrame to a CSV string for download
     csv = df.to_csv(index=False).encode('utf-8')
     st.download_button(
@@ -269,4 +210,4 @@ if "Cluster" in df.columns:
         mime='text/csv',
     )
 else:
-    st.info("The clustered data is not ready to download yet. Please run the clustering process above.")
+    st.info("The clustered data is not ready to download yet. Please perform the clustering first.")
