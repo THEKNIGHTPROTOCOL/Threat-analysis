@@ -30,9 +30,9 @@ st.dataframe(df.head())
 st.write("### 📐 Dataset Info")
 st.write(f"**Shape:** {df.shape[0]} rows × {df.shape[1]} columns")
 st.write("**Data Types:**")
-st.write(df.dtypes)
+st.dataframe(df.dtypes)
 st.write("**Missing Values:**")
-st.write(df.isnull().sum())
+st.dataframe(df.isnull().sum())
 
 # ====== BASIC STATISTICS ======
 st.write("### 📊 Basic Statistics")
@@ -117,4 +117,4 @@ if len(numerical_cols) >= 2:
     st.pyplot(fig)
 
     st.write("### Cluster Sizes")
-    st.write(pd.Series(clusters).value_counts().sort_index())
+    st.dataframe(pd.Series(clusters).value_counts().sort_index())
