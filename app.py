@@ -26,7 +26,7 @@ def load_data():
 df = load_data()
 
 if df.empty:
-    st.warning("⚠ No valid data found.")
+    st.warning("⚠️ No valid data found.")
     st.stop()
 
 # Show dataset preview
@@ -34,7 +34,7 @@ st.subheader("🔍 Dataset Preview")
 st.dataframe(df.head(20))
 
 # Basic dataset info
-with st.expander("ℹ Dataset Info"):
+with st.expander("ℹ️ Dataset Info"):
     st.write(df.describe(include="all"))
     st.write(f"Dataset Shape: {df.shape}")
 
@@ -46,7 +46,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Categorical Distributions", "Numeric Trends",
 with tab1:
     st.markdown("### 🔹 Distribution of Categorical Variables")
     for col in df.select_dtypes(include="object").columns[:3]:  # limit to first 3 categorical cols
-        st.write(f"*Top categories in {col}:*")
+        st.write(f"**Top categories in {col}:**")
         fig, ax = plt.subplots(figsize=(6,3))
         df[col].value_counts().head(10).plot(kind="barh", ax=ax, color="skyblue")
         ax.set_title(f"Top 10 {col} categories")
@@ -80,3 +80,4 @@ with tab4:
     st.write("- Numeric variables distribution highlights anomalies or peaks.")  
     st.write("- Correlation heatmap reveals relationships between activity features.")  
     st.success("✅ Dashboard ready for further exploration & threat detection models!")
+
