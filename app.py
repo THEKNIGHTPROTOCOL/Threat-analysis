@@ -6,9 +6,9 @@
 #
 # Key Improvements:
 # - Bug Fix: Updated KMeans initialization parameter 'n_init' to 'auto'.
-# - Enhanced Visuals: Used a more professional color palette and consistent styling.
-# - Better UX: Added more descriptive titles, headers, and organized content in tabs.
-# - Robustness: Added explicit plot closing to prevent memory leaks in Streamlit.
+# - Enhanced Visuals: Switched from Matplotlib/Seaborn to Plotly for interactive plots.
+# - Better UX: Added a Cluster Profile Analysis section for data interpretation.
+# - Robustness: Added explicit plot closing to prevent memory leaks.
 # =========================================================================
 
 # ====== IMPORT LIBRARIES ======
@@ -20,17 +20,18 @@ import streamlit as st
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+import plotly.express as px
 
 # ====== STREAMLIT CONFIGURATION & APP HEADER ======
 # Set the page title and layout for a wide, professional-looking dashboard.
 st.set_page_config(page_title="📊 Mobile Phone Activity Dashboard", layout="wide")
 sns.set_style("whitegrid")
-st.title("📱 Mobile Phone Activity Analysis & Clustering")
-st.markdown("#### Upload your own dataset or use the default one to get started.")
+st.title("📱 Professional Mobile Phone Activity Analysis")
+st.markdown("#### A comprehensive dashboard for data exploration, visualization, and user segmentation.")
 
 # ====== DATA LOADING & CLEANING ======
 # Use Streamlit's file uploader for user-provided CSV.
-uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
+uploaded_file = st.file_uploader("Upload your own dataset (CSV)", type=["csv"])
 
 # Define a robust function to load and clean the data.
 @st.cache_data
@@ -107,13 +108,9 @@ with tab2:
         if len(numeric_cols) > 0:
             selected_num_cols = st.multiselect("Select numerical columns to visualize", numeric_cols, default=numeric_cols[:min(4, len(numeric_cols))])
             for col in selected_num_cols:
-                fig, ax = plt.subplots(figsize=(8, 5))
-                sns.histplot(df[col], kde=True, color="#1f77b4", ax=ax)
-                ax.set_title(f"Distribution of {col}", fontsize=16)
-                ax.set_xlabel(col, fontsize=12)
-                ax.set_ylabel("Frequency", fontsize=12)
-                st.pyplot(fig)
-                plt.close(fig)
+                fig = px.histogram(df, x=col, marginal="box", nbins=30, color_discrete_sequence=['#1f77b4'])
+                fig.update_layout(title_text=f"Distribution of {col}", title_x=0.5)
+                st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No numerical columns available for visualization.")
 
@@ -121,41 +118,38 @@ with tab2:
         st.subheader("🔹 Distribution of Categorical Features")
         if len(categorical_cols) > 0:
             selected_cat_col = st.selectbox("Select a categorical column to visualize", categorical_cols)
-            fig, ax = plt.subplots(figsize=(8, 5))
-            value_counts = df[selected_cat_col].value_counts().head(15)
-            sns.barplot(x=value_counts.values, y=value_counts.index, palette="viridis", ax=ax)
-            ax.set_title(f"Top 15 Categories in {selected_cat_col}", fontsize=16)
-            ax.set_xlabel("Count", fontsize=12)
-            ax.set_ylabel(selected_cat_col, fontsize=12)
-            st.pyplot(fig)
-            plt.close(fig)
+            value_counts = df[selected_cat_col].value_counts().head(15).reset_index()
+            value_counts.columns = [selected_cat_col, 'count']
+            fig = px.bar(value_counts, x='count', y=selected_cat_col, orientation='h', color_discrete_sequence=['#2ca02c'])
+            fig.update_layout(title_text=f"Top 15 Categories in {selected_cat_col}", title_x=0.5)
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No categorical columns available for visualization.")
 
     with corr_tab:
-        st.subheader("🔥 Correlation Heatmap")
+        st.subheader("🔥 Interactive Correlation Heatmap")
         if len(numeric_cols) > 1:
-            fig, ax = plt.subplots(figsize=(12, 10))
-            sns.heatmap(df[numeric_cols].corr(), annot=True, cmap="coolwarm", center=0, fmt=".2f", linewidths=.5, ax=ax)
-            ax.set_title("Feature Correlation Heatmap", fontsize=18)
-            st.pyplot(fig)
-            plt.close(fig)
+            corr_matrix = df[numeric_cols].corr().round(2)
+            fig = px.imshow(corr_matrix, text_auto=True, color_continuous_scale='RdBu_r', 
+                            aspect="auto")
+            fig.update_layout(title_text="Feature Correlation Heatmap", title_x=0.5)
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Not enough numerical columns to display a correlation heatmap.")
         
         st.markdown("---")
-        if st.checkbox("Show Pairplot (Warning: May be slow for large datasets)"):
+        if st.checkbox("Show Interactive Pairplot (Warning: May be slow for large datasets)"):
             if len(numeric_cols) > 1 and len(numeric_cols) <= 10:
                 sample_df = df[numeric_cols].sample(min(500, len(df)))
-                fig = sns.pairplot(sample_df)
-                st.pyplot(fig)
-                plt.close(fig)
+                fig = px.scatter_matrix(sample_df)
+                fig.update_layout(title_text="Interactive Pairplot", title_x=0.5)
+                st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("Pairplot is not recommended for this dataset (too many columns or rows).")
 
 with tab3:
     # ====== K-MEANS CLUSTERING ======
-    st.header("🤖 K-Means Clustering")
+    st.header("🤖 K-Means Clustering for User Segmentation")
     if len(numeric_cols) >= 2:
         st.markdown("### 1. Find the Optimal Number of Clusters")
         st.markdown("Use the **Elbow Method** below to visually identify a good number of clusters (K). Look for the point where the curve starts to bend.")
@@ -168,12 +162,11 @@ with tab3:
         # Elbow method to find the optimal number of clusters
         wcss = []
         for i in range(1, 11):
-            # Use n_init='auto' to resolve future deprecation warnings
             kmeans = KMeans(n_clusters=i, init="k-means++", random_state=42, n_init='auto')
             kmeans.fit(X_scaled)
             wcss.append(kmeans.inertia_)
         
-        # Plot the elbow method graph
+        # Plot the elbow method graph with Matplotlib
         fig, ax = plt.subplots(figsize=(8, 5))
         ax.plot(range(1, 11), wcss, marker="o", linestyle="--", color="#e84a5f")
         ax.set_xlabel("Number of Clusters (K)", fontsize=12)
@@ -196,21 +189,25 @@ with tab3:
         st.dataframe(df["Cluster"].value_counts().sort_index())
 
         st.markdown("### 3. Visualize the Clusters")
-        st.markdown("A 2D PCA plot helps visualize the clusters in a reduced dimension.")
+        st.markdown("An interactive 2D PCA plot helps visualize the clusters in a reduced dimension.")
         
         # PCA for 2D visualization of clusters
         pca = PCA(n_components=2)
         X_pca = pca.fit_transform(X_scaled)
-        
+        pca_df = pd.DataFrame(X_pca, columns=['PCA Component 1', 'PCA Component 2'], index=X.index)
+        pca_df['Cluster'] = df['Cluster']
+
         # Create a scatter plot of the clusters in the 2D PCA space
-        fig, ax = plt.subplots(figsize=(10, 8))
-        scatter = ax.scatter(X_pca[:, 0], X_pca[:, 1], c=clusters, cmap="viridis", alpha=0.7)
-        ax.set_xlabel("PCA Component 1", fontsize=12)
-        ax.set_ylabel("PCA Component 2", fontsize=12)
-        ax.set_title(f"K-Means Clusters (K={k}, 2D PCA)", fontsize=16)
-        fig.colorbar(scatter, ax=ax, label="Cluster")
-        st.pyplot(fig)
-        plt.close(fig)
+        fig = px.scatter(pca_df, x='PCA Component 1', y='PCA Component 2', color='Cluster', 
+                         hover_data=numeric_cols, # Show original data on hover
+                         color_continuous_scale='viridis')
+        fig.update_layout(title_text=f"K-Means Clusters (K={k}, 2D PCA)", title_x=0.5)
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("### 4. Cluster Profile Analysis")
+        st.markdown("This table shows the **average values** for each feature per cluster. This is key to understanding the characteristics of each user segment.")
+        cluster_profiles = df.groupby('Cluster')[numeric_cols].mean().transpose()
+        st.dataframe(cluster_profiles.style.highlight_max(axis=0))
 
     else:
         st.info("Please ensure your dataset has at least two numerical columns to perform clustering.")
