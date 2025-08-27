@@ -1,4 +1,4 @@
-# ====== IMPORT ALL REQUIRED LIBRARIES ======
+# ====== IMPORT LIBRARIES ======
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,84 +7,82 @@ import streamlit as st
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
-# ====== STREAMLIT CONFIGURATION ======
+# ====== STREAMLIT CONFIG ======
 st.set_page_config(page_title="📊 Mobile Phone Activity Analysis", layout="wide")
 sns.set_style("whitegrid")
+np.random.seed(42)
 
-# ====== TITLE ======
-st.title("📱 Mobile Phone Activity Analysis & Clustering")
-st.write("Analyze mobile user behavior with clustering and visualizations.")
+st.title("📱 Mobile Phone Activity Analysis")
+st.write("Data visualization and clustering of mobile phone activity dataset.")
 
-# ====== LOAD DATASET FROM GITHUB ======
-csv_url = "https://raw.githubusercontent.com/THEKNIGHTPROTOCOL/Threat-analysis/a8903074af0b9bab8366e824467cbb6d9bdeccb8/mobile_activity_big.csv"
+# ====== LOAD DATASET ======
+csv_url = "https://raw.githubusercontent.com/THEKNIGHTPROTOCOL/Threat-analysis/main/mobile_activity_big.csv"
 
-st.info("Loading dataset from GitHub... ⏳")
 try:
     df = pd.read_csv(csv_url)
-    st.success(f"✅ Dataset Loaded: {df.shape[0]} rows × {df.shape[1]} columns")
+    st.success(f"✅ Dataset Loaded Successfully! ({df.shape[0]} rows × {df.shape[1]} columns)")
 except Exception as e:
     st.error(f"❌ Failed to load dataset: {e}")
     st.stop()
 
-# ====== SHOW DATA ======
-st.subheader("First 5 Rows of the Dataset")
+# ====== SHOW BASIC INFO ======
+st.subheader("Dataset Overview")
+st.write("### First 5 rows")
 st.dataframe(df.head())
 
-# ====== BASIC INFO ======
-st.write("### 📐 Dataset Info")
-st.write(f"**Shape:** {df.shape[0]} rows × {df.shape[1]} columns")
+st.write("### Dataset Info")
+st.write(f"**Shape:** {df.shape}")
 st.write("**Data Types:**")
 st.write(df.dtypes)
 st.write("**Missing Values:**")
 st.write(df.isnull().sum())
 
-# ====== STATISTICS ======
-st.subheader("📊 Basic Statistics")
+st.write("### Basic Statistics")
 st.dataframe(df.describe())
 
 # ====== VISUALIZATIONS ======
-st.header("📈 Data Visualizations")
-
+st.header("📈 Visualizations")
 numerical_cols = df.select_dtypes(include=[np.number]).columns
 categorical_cols = df.select_dtypes(include=['object']).columns
 
-# Histograms for numerical columns
+# Numerical columns distributions
 if len(numerical_cols) > 0:
-    st.subheader("🔹 Distribution of Numerical Variables")
+    st.subheader("Numerical Columns Distribution")
     for col in numerical_cols[:4]:
         fig, ax = plt.subplots()
-        sns.histplot(df[col], kde=True, ax=ax)
-        ax.set_title(f"Distribution of {col}")
+        sns.histplot(df[col], kde=True, ax=ax, color="skyblue")
+        ax.set_title(f"{col} Distribution")
         st.pyplot(fig)
 
-# Correlation Heatmap
+# Correlation heatmap
 if len(numerical_cols) > 1:
-    st.subheader("🔹 Correlation Heatmap")
+    st.subheader("Correlation Heatmap")
     fig, ax = plt.subplots(figsize=(10, 8))
     sns.heatmap(df[numerical_cols].corr(), annot=True, cmap="coolwarm", center=0, ax=ax)
     st.pyplot(fig)
 
 # Boxplot
 if len(numerical_cols) > 0:
-    st.subheader("🔹 Boxplots of Numerical Variables")
+    st.subheader("Boxplots of Numerical Columns")
     fig, ax = plt.subplots(figsize=(15, 6))
     df[numerical_cols].boxplot(ax=ax)
     ax.set_title("Boxplot of Numerical Variables")
     st.pyplot(fig)
 
-# Categorical Variables
+# Categorical columns
 if len(categorical_cols) > 0:
-    st.subheader("🔹 Distribution of Categorical Variables")
+    st.subheader("Categorical Columns Distribution")
     for col in categorical_cols:
         fig, ax = plt.subplots()
         value_counts = df[col].value_counts().head(10)
         sns.barplot(x=value_counts.values, y=value_counts.index, ax=ax)
-        ax.set_title(f"Distribution of {col} (Top 10)")
+        ax.set_title(f"{col} (Top 10 Categories)")
         st.pyplot(fig)
 
 # ====== K-MEANS CLUSTERING ======
 if len(numerical_cols) >= 2:
     st.header("🤖 K-Means Clustering")
+    
     X = df[numerical_cols].dropna()
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
@@ -103,7 +101,7 @@ if len(numerical_cols) >= 2:
     ax.set_title("Elbow Method for Optimal Clusters")
     st.pyplot(fig)
 
-    # Let user select cluster count
+    # Select number of clusters
     k = st.slider("Select number of clusters (k)", min_value=2, max_value=10, value=3)
     kmeans = KMeans(n_clusters=k, init="k-means++", random_state=42, n_init=10)
     clusters = kmeans.fit_predict(X_scaled)
@@ -111,20 +109,14 @@ if len(numerical_cols) >= 2:
     df_clustered = X.copy()
     df_clustered["Cluster"] = clusters
 
-    # Cluster visualization (using first 2 numerical columns)
+    # Cluster visualization (first 2 numerical columns)
     fig, ax = plt.subplots()
     scatter = ax.scatter(X.iloc[:, 0], X.iloc[:, 1], c=clusters, cmap="viridis", alpha=0.6)
     ax.set_xlabel(numerical_cols[0])
     ax.set_ylabel(numerical_cols[1])
-    ax.set_title("K-means Clustering Results")
+    ax.set_title("K-Means Clustering Results")
     fig.colorbar(scatter, ax=ax, label="Cluster")
     st.pyplot(fig)
 
-    st.subheader("Cluster Sizes")
+    st.write("### Cluster Sizes")
     st.write(pd.Series(clusters).value_counts().sort_index())
-
-# ====== SAVE RESULTS ======
-st.subheader("💾 Save Clustered Data")
-output_path = "mobile_activity_clustered.csv"
-df_clustered.to_csv(output_path, index=False)
-st.success(f"Clustered data saved as `{output_path}`")
