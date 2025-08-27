@@ -10,51 +10,49 @@ from sklearn.cluster import KMeans
 # ====== STREAMLIT CONFIG ======
 st.set_page_config(page_title="📊 Mobile Phone Activity Analysis", layout="wide")
 sns.set_style("whitegrid")
-np.random.seed(42)
-
-st.title("📱 Mobile Phone Activity Analysis")
-st.write("Data visualization and clustering of mobile phone activity dataset.")
+st.title("📱 Mobile Phone Activity - Analysis & Clustering")
 
 # ====== LOAD DATASET ======
 csv_url = "https://raw.githubusercontent.com/THEKNIGHTPROTOCOL/Threat-analysis/main/mobile_activity_big.csv"
 
 try:
-    df = pd.read_csv(csv_url)
+    df = pd.read_csv(csv_url, error_bad_lines=False, warn_bad_lines=True)
     st.success(f"✅ Dataset Loaded Successfully! ({df.shape[0]} rows × {df.shape[1]} columns)")
 except Exception as e:
     st.error(f"❌ Failed to load dataset: {e}")
     st.stop()
 
-# ====== SHOW BASIC INFO ======
-st.subheader("Dataset Overview")
-st.write("### First 5 rows")
+# ====== SHOW DATA ======
+st.subheader("First 5 Rows")
 st.dataframe(df.head())
 
-st.write("### Dataset Info")
-st.write(f"**Shape:** {df.shape}")
-st.write("**Data Types:**")
+st.subheader("Dataset Info")
+st.write(f"Shape: {df.shape}")
+st.write("Data Types:")
 st.write(df.dtypes)
-st.write("**Missing Values:**")
+st.write("Missing Values:")
 st.write(df.isnull().sum())
 
-st.write("### Basic Statistics")
+# ====== BASIC STATISTICS ======
+st.subheader("Basic Statistics")
 st.dataframe(df.describe())
 
 # ====== VISUALIZATIONS ======
 st.header("📈 Visualizations")
+
 numerical_cols = df.select_dtypes(include=[np.number]).columns
 categorical_cols = df.select_dtypes(include=['object']).columns
 
-# Numerical columns distributions
+# Histogram for numerical columns
 if len(numerical_cols) > 0:
-    st.subheader("Numerical Columns Distribution")
+    st.subheader("Distribution of Numerical Variables")
     for col in numerical_cols[:4]:
         fig, ax = plt.subplots()
         sns.histplot(df[col], kde=True, ax=ax, color="skyblue")
-        ax.set_title(f"{col} Distribution")
+        ax.set_title(f"Distribution of {col}")
         st.pyplot(fig)
 
-# Correlation heatmap
+# Correlation Heatmap
 if len(numerical_cols) > 1:
     st.subheader("Correlation Heatmap")
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -63,26 +61,25 @@ if len(numerical_cols) > 1:
 
 # Boxplot
 if len(numerical_cols) > 0:
-    st.subheader("Boxplots of Numerical Columns")
+    st.subheader("Boxplots of Numerical Variables")
     fig, ax = plt.subplots(figsize=(15, 6))
     df[numerical_cols].boxplot(ax=ax)
     ax.set_title("Boxplot of Numerical Variables")
     st.pyplot(fig)
 
-# Categorical columns
+# Categorical Variables
 if len(categorical_cols) > 0:
-    st.subheader("Categorical Columns Distribution")
+    st.subheader("Distribution of Categorical Variables")
     for col in categorical_cols:
         fig, ax = plt.subplots()
         value_counts = df[col].value_counts().head(10)
         sns.barplot(x=value_counts.values, y=value_counts.index, ax=ax)
-        ax.set_title(f"{col} (Top 10 Categories)")
+        ax.set_title(f"Distribution of {col} (Top 10)")
         st.pyplot(fig)
 
 # ====== K-MEANS CLUSTERING ======
 if len(numerical_cols) >= 2:
     st.header("🤖 K-Means Clustering")
-    
     X = df[numerical_cols].dropna()
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
@@ -101,7 +98,7 @@ if len(numerical_cols) >= 2:
     ax.set_title("Elbow Method for Optimal Clusters")
     st.pyplot(fig)
 
-    # Select number of clusters
+    # User selects cluster count
     k = st.slider("Select number of clusters (k)", min_value=2, max_value=10, value=3)
     kmeans = KMeans(n_clusters=k, init="k-means++", random_state=42, n_init=10)
     clusters = kmeans.fit_predict(X_scaled)
@@ -109,14 +106,15 @@ if len(numerical_cols) >= 2:
     df_clustered = X.copy()
     df_clustered["Cluster"] = clusters
 
-    # Cluster visualization (first 2 numerical columns)
+    # Cluster visualization (first two numerical features)
     fig, ax = plt.subplots()
     scatter = ax.scatter(X.iloc[:, 0], X.iloc[:, 1], c=clusters, cmap="viridis", alpha=0.6)
     ax.set_xlabel(numerical_cols[0])
     ax.set_ylabel(numerical_cols[1])
-    ax.set_title("K-Means Clustering Results")
+    ax.set_title("K-means Clustering Results")
     fig.colorbar(scatter, ax=ax, label="Cluster")
     st.pyplot(fig)
 
-    st.write("### Cluster Sizes")
+    st.subheader("Cluster Sizes")
     st.write(pd.Series(clusters).value_counts().sort_index())
+
