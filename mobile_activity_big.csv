@@ -1,0 +1,26 @@
+import pandas as pd
+import numpy as np
+
+# Set seed for reproducibility
+np.random.seed(42)
+
+# Number of rows
+n_rows = 50000
+
+# Create synthetic dataset
+df = pd.DataFrame({
+    "user_id": np.arange(1, n_rows + 1),
+    "call_duration_min": np.random.randint(0, 300, n_rows),       # minutes
+    "messages_sent": np.random.randint(0, 100, n_rows),           # SMS count
+    "internet_usage_mb": np.random.randint(0, 5000, n_rows),      # MB
+    "app_sessions": np.random.randint(0, 50, n_rows),             # app usage count
+    "device_type": np.random.choice(["Android", "iOS"], n_rows),
+    "subscription_plan": np.random.choice(["Basic", "Standard", "Premium"], n_rows),
+    "active_days": np.random.randint(0, 31, n_rows),              # days active in month
+})
+
+# Save smaller version for GitHub (<25 MB)
+df_small = df.sample(n=20000, random_state=42)  # 20k rows to fit GitHub
+df_small.to_csv("mobile_activity_big.csv", index=False)
+
+print("✅ Synthetic dataset generated and saved as mobile_activity_big.csv")
