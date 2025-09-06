@@ -66,7 +66,7 @@ Stay resilient.
 
 ---
 
-Would you like a **short, impactful GitHub tagline and description** too, so your repo stands out at a glance?
+
 
 
 
