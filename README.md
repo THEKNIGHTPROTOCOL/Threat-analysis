@@ -34,7 +34,8 @@ Live Demo
 
 Experience the app live here:
 👉 https://threat-analysis-8crzl78gebsxvhyeo9njud.streamlit.app/
-+++
+
+---
 
 Contributing
 
