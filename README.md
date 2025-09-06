@@ -37,7 +37,7 @@ Experience the app live here:
 
 ---
 
-Contributing
+### Contributing
 
 Your insights can fortify this tool further. Please:
 
@@ -47,11 +47,11 @@ Submit bug fixes or new features via Pull Requests.
 
 Collaborate, comment, and help make this project stronger.
 
-License
+### License
 
 This project is open-source under the MIT License—free to use, adapt, and distribute.
 
-Final Thoughts
+### Final Thoughts
 
 Threats are inevitable—but preparation, insight, and action turn uncertainty into empowerment.
 
