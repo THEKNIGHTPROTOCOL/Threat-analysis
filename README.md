@@ -28,14 +28,12 @@ This project embodies proactive vigilance, fueled by data, clarity, and decisive
 
 
 
-Launch the app
-streamlit run app.py
+
 
 Live Demo
 
 Experience the app live here:
-👉 Threat Analysis App on Streamlit
-
+👉 
 Contributing
 
 Your insights can fortify this tool further. Please:
